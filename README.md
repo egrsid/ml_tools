@@ -16,14 +16,14 @@ This file contains four specialized classes tailored for different machine learn
 - **RecommendSystem**: A class designed for building and managing recommendation systems using the k-Nearest Neighbors (k-NN) algorithm. It offers flexibility in choosing distance metrics, including custom metrics like Levenshtein distance, and provides tools for generating and sorting recommendations based on different criteria.
 
 ### 2. `tools_pandas.py`
-The `tools_pandas.py` file introduces a custom `DataFrame` class that extends the capabilities of the standard `pandas.DataFrame`, specifically tailored for machine learning and data analysis tasks. This enhanced DataFrame retains all the familiar functionality of a typical Pandas DataFrame while incorporating additional methods to simplify and accelerate common data manipulation and analysis workflows.
+The `tools_pandas.py` file introduces a custom `DataFrame` class that extends the capabilities of the standard `pandas.DataFrame` (from [pandas](https://pandas.pydata.org/) library), specifically tailored for machine learning and data analysis tasks. This enhanced DataFrame retains all the familiar functionality of a typical Pandas DataFrame while incorporating additional methods to simplify and accelerate common data manipulation and analysis workflows.
 
 #### Key Features:
 - **Outlier Detection**: Advanced methods for detecting outliers using statistical and machine learning techniques, including the 3-sigma rule, Tukey's fences, and clustering-based approaches.
-- **Feature Selection and Engineering**: Direct integration with `scikit-learn` for feature selection using methods like `SelectKBest` and `Lasso`, enabling easy selection of the most relevant features for model training.
+- **Feature Selection and Engineering**: Direct integration with [`scikit-learn`](https://scikit-learn.org/stable/index.html) for feature selection using methods like `SelectKBest` and `Lasso`, enabling easy selection of the most relevant features for model training.
 - **Clustering and Dimensionality Reduction**: Built-in support for clustering algorithms such as DBSCAN and dimensionality reduction techniques like PCA and Linear Discriminant Analysis.
 - **Handling Imbalanced Data**: Utilities for balancing datasets through oversampling and undersampling methods like SMOTE, improving the performance of models on imbalanced datasets.
-- **Visualization**: Simplified plotting functions using `matplotlib` and `seaborn` for quick visualization of data distributions, correlations, and analysis results.
+- **Visualization**: Simplified plotting functions using [`matplotlib`](https://matplotlib.org/) and [`seaborn`](https://seaborn.pydata.org/) for quick visualization of data distributions, correlations, and analysis results.
 
 ---
 
