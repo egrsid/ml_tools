@@ -1,31 +1,98 @@
-import scipy
-from tqdm import tqdm
-from sklearn.linear_model import Lasso
-from matplotlib import pyplot as plt
+import imblearn.over_sampling as osampling
+import imblearn.under_sampling as usampling
 import matplotlib
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.inspection import permutation_importance
+import numpy as np
+import pandas as pd
+import scipy
+import scipy.stats
+import seaborn as sns
+from matplotlib import pyplot as plt
+from sklearn.cluster import DBSCAN
+from sklearn.covariance import EllipticEnvelope
 from sklearn.decomposition import PCA
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.neighbors import NeighborhoodComponentsAnalysis, KNeighborsClassifier
-import seaborn as sns
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import f_classif, chi2
-from sklearn.feature_selection import SelectPercentile
-import pandas as pd
-import numpy as np
-import scipy.stats
-from sklearn.cluster import DBSCAN
-from sklearn.svm import OneClassSVM
-from sklearn.ensemble import IsolationForest
-from sklearn.covariance import EllipticEnvelope
-from sklearn.neighbors import LocalOutlierFactor
+from sklearn.ensemble import IsolationForest, RandomForestClassifier
+from sklearn.feature_selection import (SelectKBest, SelectPercentile, chi2,
+                                       f_classif)
+from sklearn.inspection import permutation_importance
+from sklearn.linear_model import Lasso
+from sklearn.neighbors import (KNeighborsClassifier, LocalOutlierFactor,
+                               NeighborhoodComponentsAnalysis)
 from sklearn.preprocessing import StandardScaler
-import imblearn.under_sampling as usampling
-import imblearn.over_sampling as osampling
+from sklearn.svm import OneClassSVM
+from tqdm import tqdm
 
 
 class DataFrame(pd.DataFrame):
+    """
+    Custom DataFrame Class for Enhanced Machine Learning and Data Analysis
+
+    Overview:
+    ---------
+    The `DataFrame` class is a custom extension of the `pandas.DataFrame`, specifically designed to provide additional functionalities that are beneficial in machine learning and data analysis contexts. It inherits all standard properties and methods of the `pandas.DataFrame` while introducing new methods for advanced data manipulation, outlier detection, feature selection, and other key operations that streamline the workflow of data scientists and machine learning engineers.
+
+    Features:
+    ---------
+    - **Outlier Detection:**
+      - Methods for detecting outliers using various statistical and machine learning approaches (e.g., 3-sigma rule, Tukey's fences, Grubbs' test, clustering methods).
+    - **Feature Selection and Engineering:**
+      - Integration with `scikit-learn` to perform feature selection using techniques like `SelectKBest`, `Lasso`, and others directly on the DataFrame.
+    - **Clustering and Dimensionality Reduction:**
+      - Methods that utilize algorithms like DBSCAN, PCA, and Linear Discriminant Analysis for clustering and reducing data dimensionality.
+    - **Handling Imbalanced Data:**
+      - Utilities for oversampling and undersampling using `imblearn` methods to balance datasets, crucial for improving model performance on imbalanced classes.
+    - **Visualization:**
+      - Simplified plotting capabilities using `matplotlib` and `seaborn` to quickly visualize data distributions, correlations, and results of analyses.
+
+    Usage:
+    ------
+    The `DataFrame` class is intended to be a drop-in replacement for `pandas.DataFrame` in machine learning pipelines, providing more powerful and specialized methods that cater to the needs of data professionals.
+
+    Example:
+    --------
+    ```python
+    import pandas as pd
+    from tools_pandas import DataFrame
+
+    # Load your data into the custom DataFrame
+    df = DataFrame(pd.read_csv("data.csv"))
+
+    # Example 1: Detect outliers using the '3sigma' method
+    outliers = df.detect_outliers(method='3sigma')
+    print("Outliers detected using 3sigma method:")
+    print(outliers)
+
+    # Compiler Output:
+    # Outliers detected using 3sigma method:
+    #     feature_1  feature_2
+    # 5     12.455     0.987
+    # 18    11.002     1.789
+    # 45    13.543     2.456
+    # ...
+
+    # Example 2: Perform feature selection using SelectKBest with k=10
+    selected_features = df.feature_selection(method='SelectKBest', k=10)
+    print("Top 10 selected features:")
+    print(selected_features.columns)
+
+    # Compiler Output:
+    # Top 10 selected features:
+    # Index(['feature_3', 'feature_7', 'feature_10', ...], dtype='object')
+
+    # Example 3: Visualize the correlation matrix
+    df.plot_correlation_matrix()
+
+    # Example 4: Handling imbalanced data using SMOTE for oversampling
+    balanced_df = df.over_sampling(target='target', method='SMOTE')
+    print("Balanced dataset shape:")
+    print(balanced_df.shape)
+
+    # Compiler Output:
+    # Balanced dataset shape:
+    # (2000, 20)
+    ```
+    """
+
     def __init__(self, data):
         """
         Initialize a custom DataFrame object, ensuring the provided data is a pandas DataFrame.
