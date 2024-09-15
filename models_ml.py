@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 from pandas import DataFrame, Series
 from scipy.cluster.hierarchy import dendrogram
 from scipy.spatial.distance import cdist
+from sklearn import ensemble
 from sklearn.base import (BaseEstimator, ClassifierMixin, ClusterMixin,
                           RegressorMixin, is_regressor)
 from sklearn.ensemble import (AdaBoostClassifier, AdaBoostRegressor,
@@ -236,7 +237,7 @@ class Model:
             raise ValueError("You're tying to load incorrect model")
 
     def fit_all(self, X: Any, y: Any = None, final_estimator=LogisticRegression(),
-                min_estimator_amount: int = 2, max_estimator_amount: int = 5, **kwargs) -> Tuple[
+                min_estimator_amount: int = 2, max_estimator_amount: int = 5) -> Tuple[
         Dict[str, 'Model'], Dict[str, Exception]]:
 
         """
@@ -278,7 +279,6 @@ class Model:
         """
 
         fitted_models: Dict[str, 'Model'] = {}
-        error_fitting: Dict[str, Exception] = {}
         unique_warnings = set()
 
         # для бэггинга отдельно
@@ -287,25 +287,28 @@ class Model:
 
             for model_name, model_type in self.__model_types_with_names:
                 model = BaggingRegressor if is_regressor(self.model) else BaggingClassifier
+
+                print(f"==============={model.__name__}(estimator={model_name})===============")
+
                 try:
                     # Перехват предупреждений
                     with warnings.catch_warnings(record=True) as w:
                         warnings.simplefilter("always")
-                        model_instance = model(estimator=model_type(), **kwargs)
+                        model_instance = model(estimator=model_type(), n_jobs=-1)
                         model_instance.fit(X, y)
-                        fitted_models[model_name] = self.__class__(model_instance)
+                        fitted_models[f'{model.__name__}(estimator={model_name})'] = self.__class__(model_instance)
 
                         # Сбор уникальных сообщений предупреждений
                         for warning in w:
                             warning_msg = str(warning.message)
                             if warning_msg not in unique_warnings:
                                 unique_warnings.add(warning_msg)
+                        if unique_warnings:
+                            for warning in unique_warnings:
+                                print(f"- {warning}")
+                        print(f'WAS FITTED SUCCESSFULLY\n')
                 except Exception as e:
-                    error_fitting[model_name] = e
-                if unique_warnings:
-                    print(f"{model_name}:")
-                    for warning in unique_warnings:
-                        print(f"- {warning}")
+                    print(f'FITTING FAILED: {e}\n')
         # для стекинга
         elif self.model.__class__.__name__.startswith('Stacking'):
             print(f'!Stacking models! \n')
@@ -315,31 +318,35 @@ class Model:
                 for estimators in combo_estimators:
                     model = StackingRegressor if is_regressor(self.model) else StackingClassifier
 
-                    estimators = [(i[0], i[1]()) for i in estimators]
                     estim_names = ''
                     for i in estimators:
                         estim_names += i[0] + ' '
 
+                    print(f"==============={model.__name__}(estimators=({estim_names[:-1]}))===============")
+
                     try:
+                        estimators = [(i[0], i[1](n_jobs=-1)) if 'n_jobs' in i[1].__dict__.keys() else (i[0], i[1]())
+                                      for i in estimators]
                         # Перехват предупреждений
                         with warnings.catch_warnings(record=True) as w:
                             warnings.simplefilter("always")
                             model_instance = model(estimators=estimators,
-                                                   final_estimator=final_estimator, **kwargs)
+                                                   final_estimator=final_estimator, n_jobs=-1)
                             model_instance.fit(X, y)
-                            fitted_models[estim_names] = self.__class__(model_instance)
+                            fitted_models[f'{model.__name__}(estimators=({estim_names[:-1]}))'] = self.__class__(
+                                model_instance)
 
                             # Сбор уникальных сообщений предупреждений
                             for warning in w:
                                 warning_msg = str(warning.message)
                                 if warning_msg not in unique_warnings:
                                     unique_warnings.add(warning_msg)
+                            if unique_warnings:
+                                for warning in unique_warnings:
+                                    print(f"- {warning}")
+                        print(f'WAS FITTED SUCCESSFULLY\n')
                     except Exception as e:
-                        error_fitting[estim_names] = e
-                    if unique_warnings:
-                        print(f"{estim_names}:")
-                        for warning in unique_warnings:
-                            print(f"- {warning}")
+                        print(f'FITTING FAILED: {e}\n')
         # для бустинга
         elif self.model.__class__ in (catboost.CatBoostRegressor, catboost.CatBoostClassifier,
                                       GradientBoostingClassifier, GradientBoostingRegressor,
@@ -363,11 +370,12 @@ class Model:
                                  LGBMClassifier)
             boost_models = boost_regressors if self.model.__class__.__name__ == 'regressor' else boost_classifiers
             for model in boost_models:
+                print(f"==============={model.__name__}===============")
                 try:
                     # Перехват предупреждений
                     with warnings.catch_warnings(record=True) as w:
                         warnings.simplefilter("always")
-                        model_instance = model(**kwargs)
+                        model_instance = model(n_jobs=-1) if 'n_jobs' in model.__dict__.keys() else model()
                         model_instance.fit(X, y)
                         fitted_models[model.__name__] = self.__class__(model_instance)
 
@@ -376,38 +384,43 @@ class Model:
                             warning_msg = str(warning.message)
                             if warning_msg not in unique_warnings:
                                 unique_warnings.add(warning_msg)
+                        if unique_warnings:
+                            for warning in unique_warnings:
+                                print(f"- {warning}")
+                        print(f'WAS FITTED SUCCESSFULLY\n')
                 except Exception as e:
-                    error_fitting[model.__name__] = e
-                if unique_warnings:
-                    print(f"{model.__name__}:")
-                    for warning in unique_warnings:
-                        print(f"- {warning}")
+                    print(f'FITTING FAILED: {e}\n')
         # для обычных моделей
         else:
             print(f'!Default models! \n')
 
             for model_name, model_type in self.__model_types_with_names:
-                try:
-                    with warnings.catch_warnings(record=True) as w:
-                        warnings.simplefilter("always")
-                        model_instance = model_type()
-                        model_instance.fit(X, y)
-                        wrapped_model = self.__class__(model_instance)
-                        fitted_models[model_name] = wrapped_model
+                if model_name not in list(ensemble.__dict__.keys()) + \
+                        ['MLPClassifier', 'PassiveAggressiveClassifier', 'Perceptron']:
+                    print(f"==============={model_name}===============")
 
-                        # Сбор уникальных сообщений предупреждений
-                        for warning in w:
-                            warning_msg = str(warning.message)
-                            if warning_msg not in unique_warnings:
-                                unique_warnings.add(warning_msg)
-                except Exception as e:
-                    error_fitting[model_name] = e
-                if unique_warnings:
-                    print(f"{model_name}:")
-                    for warning in unique_warnings:
-                        print(f"- {warning}")
+                    try:
+                        with warnings.catch_warnings(record=True) as w:
+                            warnings.simplefilter("always")
+                            model_instance = model_type(
+                                n_jobs=-1) if 'n_jobs' in model_type.__dict__.keys() else model_type()
+                            model_instance.fit(X, y)
+                            wrapped_model = self.__class__(model_instance)
+                            fitted_models[model_name] = wrapped_model
 
-        return fitted_models, error_fitting
+                            # Сбор уникальных сообщений предупреждений
+                            for warning in w:
+                                warning_msg = str(warning.message)
+                                if warning_msg not in unique_warnings:
+                                    unique_warnings.add(warning_msg)
+                            if unique_warnings:
+                                for warning in unique_warnings:
+                                    print(f"- {warning}")
+                            print(f'WAS FITTED SUCCESSFULLY\n')
+                    except Exception as e:
+                        print(f'FITTING FAILED: {e}\n')
+
+        return fitted_models
 
     def get_params(self, *args: Any, **kwargs: Any) -> Dict[str, Any]:
         """
@@ -435,6 +448,38 @@ class Model:
         """
         assert self.__model is not None, "Model is not defined."
         return self.__model.get_params(*args, **kwargs)
+
+    def set_params(self, **kwargs: Any) -> Dict[str, Any]:
+        """
+            Sets parameters of the model.
+
+            Parameters:
+            -----------
+            **kwargs : Any
+                Arbitrary keyword arguments.
+
+            Returns:
+            --------
+            Estimator: estimator instace with new parameters
+
+            Raises:
+            -------
+            AssertionError: If the model is not defined.
+
+            Example:
+            --------
+            >>> params = {'Cs': 5,
+                 'penalty': 'l2',
+                 'solver': 'liblinear',
+                 'tol': 0.007064705006894037,
+                 'max_iter': 10000,
+                 'fit_intercept': False,
+                 'class_weight': None}
+            >>> model_instance = Model(model=LogisticRegressionCV())
+            >>> new_instance = model_instance.set_params(params)
+            """
+        assert self.__model is not None, "Model is not defined."
+        return self.__model.set_params(**kwargs)
 
 
 class Regressor(Model, RegressorMixin):
