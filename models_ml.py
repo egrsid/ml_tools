@@ -772,7 +772,7 @@ class Classifier(Model, ClassifierMixin):
         y_min, y_max = data[:, 1].min() - 0.5, data[:, 1].max() + 0.5
         return np.meshgrid(np.arange(x_min, x_max, 0.01), np.arange(y_min, y_max, 0.01))
 
-    def test_tree_classification(self, X, y, cy=0, fit_clf=True):
+    def test_tree_classification(self, X, y, cy=None, fit_clf=True):
         """
         Test and plot decision boundaries for a tree-based classifier.
 
@@ -795,6 +795,7 @@ class Classifier(Model, ClassifierMixin):
         --------
         >>> from sklearn.tree import DecisionTreeClassifier
         >>> import pandas as pd
+        >>> # use only 2 features to plot the boundings
         >>> X = pd.DataFrame({'feature1': [1, 2, 3, 4], 'feature2': [5, 6, 7, 8]})
         >>> y = pd.Series([0, 1, 0, 1])
         >>> model = DecisionTreeClassifier()
@@ -807,16 +808,19 @@ class Classifier(Model, ClassifierMixin):
         assert isinstance(X, pd.DataFrame), f'Incorrect X paramnetr type. {type(X)} instead of {pd.DataFrame}'
         assert isinstance(y, (
             pd.DataFrame, pd.Series)), f'Incorrect y paramnetr type. {type(y)} instead of {pd.DataFrame | pd.Series}'
+        assert X.shape[1] == 2, f'X must have exactly 2 columns for visualization, but has {X.shape[1]}'
+
+        if cy is None: cy = y.to_numpy()
 
         xx, yy = self.__get_grid(X.values)
 
         if fit_clf:
-            self.model.fit(X, y)
+            self.model.fit(X.values, y.values)
 
         predicted = self.model.predict(np.c_[xx.ravel(), yy.ravel()]).reshape(xx.shape)
 
         plt.figure(figsize=(8, 8))
-        plt.pcolormesh(xx, yy, predicted, cmap='Pastel1')
+        plt.pcolormesh(xx, yy, predicted, cmap='Pastel1', shading='auto')
         plt.scatter(X.values[:, 0], X.values[:, 1], s=50, cmap='tab10', c=cy)
         plt.xlabel(X.columns[0])
         plt.ylabel(X.columns[1])
